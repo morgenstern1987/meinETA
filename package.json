@@ -1,5 +1,5 @@
 {
-  "name": "iobroker.meineta",
+  "name": "meineta",
   "version": "0.0.1",
   "description": "ETA Touch heating adapter for ioBroker",
   "author": "Henrik Morgenstern",
