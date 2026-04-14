@@ -3,7 +3,7 @@
   "items": {
     "host": {
       "type": "text",
-      "label": "ETA IP-Adresse"
+      "label": "ETA IP Adresse"
     },
     "port": {
       "type": "number",
@@ -17,13 +17,20 @@
     },
     "varset": {
       "type": "text",
-      "label": "ETA Varset",
+      "label": "ETA VarSet",
       "default": "iobroker"
     },
     "variables": {
-      "type": "chips",
-      "label": "Zu ladende Variablen",
-      "multiple": true
+      "type": "select",
+      "label": "Zu pollende Variablen",
+      "multiple": true,
+      "options": [
+        { "label": "Boiler Temperatur", "value": "kessel.temperatur" },
+        { "label": "Boiler Leistung", "value": "kessel.leistung" },
+        { "label": "Puffer oben", "value": "puffer.oben" },
+        { "label": "Puffer unten", "value": "puffer.unten" },
+        { "label": "Außentemperatur", "value": "aussen.temperatur" }
+      ]
     }
   }
 }
