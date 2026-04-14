@@ -8,7 +8,6 @@ const { buildObjectPath } = require("./lib/nameMapper");
 class MeinEta extends utils.Adapter {
 
     constructor(options) {
-
         super({
             ...options,
             name: "meineta"
@@ -17,7 +16,6 @@ class MeinEta extends utils.Adapter {
         this.uriMap = {};
 
         this.on("ready", this.onReady.bind(this));
-
     }
 
     async onReady() {
@@ -25,15 +23,13 @@ class MeinEta extends utils.Adapter {
         try {
 
             if (!this.config.host) {
-
                 this.log.error("Bitte ETA IP konfigurieren");
                 return;
-
             }
 
             this.client = new EtaClient(this.config.host, this.config.port);
 
-            await this.cleanupWrongObjects();
+            await this.cleanupInvalidObjects();
 
             await this.ensureVarSet();
 
@@ -44,16 +40,13 @@ class MeinEta extends utils.Adapter {
             setTimeout(() => {
 
                 this.pollVars();
-                this.pollErrors();
 
                 this.pollTimer = setInterval(() => {
-
                     this.pollVars();
                     this.pollErrors();
-
                 }, this.config.pollInterval);
 
-            }, 5000);
+            }, 3000);
 
         } catch (error) {
 
@@ -63,7 +56,7 @@ class MeinEta extends utils.Adapter {
 
     }
 
-    async cleanupWrongObjects() {
+    async cleanupInvalidObjects() {
 
         const objects = await this.getAdapterObjectsAsync();
 
@@ -73,7 +66,7 @@ class MeinEta extends utils.Adapter {
 
             if (obj.type === "state" && !obj.common?.type) {
 
-                this.log.warn(`Lösche falsches Objekt ${id}`);
+                this.log.warn(`Entferne ungültiges Objekt ${id}`);
 
                 await this.delObjectAsync(id);
 
@@ -86,13 +79,9 @@ class MeinEta extends utils.Adapter {
     async ensureVarSet() {
 
         try {
-
             await this.client.put(`/user/vars/${this.config.varset}`);
-
         } catch {
-
             this.log.debug("VarSet existiert bereits");
-
         }
 
     }
@@ -120,13 +109,9 @@ class MeinEta extends utils.Adapter {
             const uri = v.uri.replace(/^\//, "");
 
             try {
-
                 await this.client.put(`/user/vars/${this.config.varset}/${uri}`);
-
             } catch {
-
-                this.log.debug(`Var nicht hinzugefügt: ${uri}`);
-
+                this.log.debug(`Variable konnte nicht registriert werden: ${uri}`);
             }
 
         }
@@ -146,7 +131,7 @@ class MeinEta extends utils.Adapter {
 
             if (exists) continue;
 
-            const isLast = i === parts.length - 1;
+            const last = i === parts.length - 1;
 
             if (i === 0) {
 
@@ -159,7 +144,7 @@ class MeinEta extends utils.Adapter {
                 continue;
             }
 
-            if (!isLast) {
+            if (!last) {
 
                 await this.setObjectAsync(path, {
                     type: "channel",
@@ -196,10 +181,8 @@ class MeinEta extends utils.Adapter {
             const vars = data?.eta?.vars?.[0]?.variable;
 
             if (!vars) {
-
-                this.log.warn("Keine Variablen vom ETA Server");
+                this.log.warn("ETA liefert keine Variablen");
                 return;
-
             }
 
             for (const v of vars) {
@@ -210,6 +193,10 @@ class MeinEta extends utils.Adapter {
 
                 if (!id) continue;
 
+                const obj = await this.getObjectAsync(id);
+
+                if (!obj) continue;
+
                 const raw = parseFloat(v._);
                 const scale = parseFloat(v.$.scaleFactor || 1);
 
@@ -217,9 +204,7 @@ class MeinEta extends utils.Adapter {
 
                 const unit = v.$.unit || "";
 
-                const obj = await this.getObjectAsync(id);
-
-                if (obj && unit && obj.common.unit !== unit) {
+                if (unit && obj.common.unit !== unit) {
 
                     obj.common.unit = unit;
 
@@ -245,7 +230,9 @@ class MeinEta extends utils.Adapter {
 
             const data = await this.client.get("/user/errors");
 
-            await this.setObjectNotExistsAsync("errors.raw", {
+            const id = "errors.raw";
+
+            await this.setObjectNotExistsAsync(id, {
                 type: "state",
                 common: {
                     name: "ETA Errors",
@@ -257,11 +244,11 @@ class MeinEta extends utils.Adapter {
                 native: {}
             });
 
-            await this.setStateAsync("errors.raw", JSON.stringify(data), true);
+            await this.setStateAsync(id, JSON.stringify(data), true);
 
         } catch (error) {
 
-            this.log.error(`Error Polling Fehler: ${error}`);
+            this.log.error(`Fehler beim Lesen der Fehlerliste: ${error}`);
 
         }
 
@@ -270,11 +257,7 @@ class MeinEta extends utils.Adapter {
 }
 
 if (require.main !== module) {
-
     module.exports = (options) => new MeinEta(options);
-
 } else {
-
     new MeinEta();
-
 }
