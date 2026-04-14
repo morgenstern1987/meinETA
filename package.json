@@ -1,7 +1,7 @@
 {
-  "name": "meineta",
-  "version": "0.0.1",
-  "description": "ETA Touch heating adapter for ioBroker",
+  "name": "iobroker.meineta",
+  "version": "0.1.0",
+  "description": "ETA heating adapter for ioBroker",
   "author": "Henrik Morgenstern",
   "license": "MIT",
   "main": "main.js",
@@ -14,14 +14,14 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/morgenstern1987/meinETA.git"
-  },
-  "engines": {
-    "node": ">=18"
+    "url": "https://github.com/morgenstern1987/iobroker.meineta"
   },
   "dependencies": {
     "@iobroker/adapter-core": "^3.2.0",
     "axios": "^1.6.0",
     "xml2js": "^0.6.2"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
