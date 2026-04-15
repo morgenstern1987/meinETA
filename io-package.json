@@ -1,0 +1,53 @@
+{
+  "common": {
+    "name": "meineta",
+    "version": "1.1.0",
+    "news": {
+      "1.1.0": {
+        "en": "Fixed groups: PufferFlex, Kessel, HK, Lager, Kamin",
+        "de": "Feste Gruppen: PufferFlex, Kessel, HK, Lager, Kamin"
+      },
+      "1.0.0": {
+        "en": "Initial release",
+        "de": "Erstveröffentlichung"
+      }
+    },
+    "title": "MeinETA",
+    "titleLang": {
+      "en": "ETA Touch Heating",
+      "de": "ETA Touch Heizung"
+    },
+    "desc": {
+      "en": "Read values from ETA Touch pellet heating systems",
+      "de": "Werte von ETA Touch Pelletheizungen auslesen"
+    },
+    "authors": ["morgenstern1987"],
+    "keywords": ["eta", "heating", "pellet", "touch"],
+    "license": "MIT",
+    "platform": "Javascript/Node.js",
+    "enabled": true,
+    "loglevel": "info",
+    "mode": "daemon",
+    "type": "hardware",
+    "singleton": false,
+    "connectionType": "local",
+    "dataSource": "poll",
+    "messagebox": false,
+    "adminUI": {
+      "config": "json"
+    },
+    "jsonConfig": true
+  },
+  "native": {
+    "ip": "",
+    "port": 8080,
+    "pollInterval": 60,
+    "groupPuffer": true,
+    "groupKessel": true,
+    "groupHK":     true,
+    "groupLager":  true,
+    "groupKamin":  true
+  },
+  "objects": [],
+  "instanceObjects": []
+}
