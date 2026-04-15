@@ -1,0 +1,56 @@
+{
+  "type": "panel",
+  "items": {
+    "ip": {
+      "type": "text",
+      "label": "IP-Adresse des ETAtouch",
+      "placeholder": "192.168.1.100",
+      "sm": 12,
+      "md": 6,
+      "validator": "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$",
+      "validatorErrorText": "Bitte eine gültige IP-Adresse eingeben"
+    },
+    "port": {
+      "type": "number",
+      "label": "Port",
+      "placeholder": "8080",
+      "min": 1,
+      "max": 65535,
+      "sm": 12,
+      "md": 3,
+      "default": 8080
+    },
+    "pollInterval": {
+      "type": "number",
+      "label": "Abfrage-Intervall (Sekunden)",
+      "placeholder": "60",
+      "min": 10,
+      "max": 3600,
+      "sm": 12,
+      "md": 3,
+      "default": 60
+    },
+    "_divider": {
+      "type": "divider"
+    },
+    "_groupsHeader": {
+      "type": "header",
+      "text": "Objektgruppen auswählen",
+      "size": 5
+    },
+    "_groupsInfo": {
+      "type": "staticText",
+      "text": "Klicke auf 'Gruppen laden', um die verfügbaren Gruppen vom ETAtouch abzurufen. Wähle dann aus, welche Gruppen regelmäßig abgefragt werden sollen."
+    },
+    "selectedGroups": {
+      "type": "selectSendTo",
+      "label": "Aktive Gruppen",
+      "command": "getGroups",
+      "jsonData": "{}",
+      "multiple": true,
+      "sm": 12,
+      "md": 12,
+      "alsoDependsOn": ["ip", "port"]
+    }
+  }
+}
