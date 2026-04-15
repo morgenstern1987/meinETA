@@ -1,98 +1,132 @@
-# ioBroker ETA Touch Adapter
+# ioBroker.meineta
 
-Liest Werte von ETA Touch Pelletheizungen über die offizielle RESTful API aus und stellt sie als ioBroker-Objekte bereit.
+![Logo](admin/eta-logo.png)
+
+[![NPM version](https://img.shields.io/npm/v/iobroker.meineta.svg)](https://www.npmjs.com/package/iobroker.meineta)
+[![Downloads](https://img.shields.io/npm/dm/iobroker.meineta.svg)](https://www.npmjs.com/package/iobroker.meineta)
+[![License](https://img.shields.io/github/license/morgenstern1987/iobroker.meineta)](LICENSE)
+[![GitHub issues](https://img.shields.io/github/issues/morgenstern1987/iobroker.meineta)](https://github.com/morgenstern1987/iobroker.meineta/issues)
+[![GitHub last commit](https://img.shields.io/github/last-commit/morgenstern1987/iobroker.meineta)](https://github.com/morgenstern1987/iobroker.meineta/commits/main)
+
+Liest Werte von **ETA Touch Pelletheizungen** über die offizielle RESTful API aus und stellt sie als ioBroker-Datenpunkte bereit.
+
+---
 
 ## Voraussetzungen
 
-- ETAtouch-Systemsoftware **≥ 1.20.0**
+- ETAtouch Systemsoftware **≥ 1.20.0**
 - Gerät bei [meineta.at](http://www.meineta.at) registriert
 - LAN-Zugang bei meineta.at beantragt **und** am Gerät in den Systemeinstellungen aktiviert
-- ioBroker mit Node.js ≥ 18
+- ioBroker mit Node.js **≥ 18**
+
+---
 
 ## Installation
 
-### Über den ioBroker Admin (empfohlen)
-
-Solange der Adapter nicht im offiziellen Repository ist, manuell installieren:
-
 ```bash
 cd /opt/iobroker
-npm install /pfad/zum/adapter/iobroker.eta-touch
-iobroker add eta-touch
+npm install github:morgenstern1987/iobroker.meineta
+iobroker add meineta
 ```
 
-Oder direkt aus GitHub (sobald du das Repo gepusht hast):
+---
 
-```bash
-cd /opt/iobroker
-npm install github:DEIN-GITHUB-USER/iobroker.eta-touch
-iobroker add eta-touch
-```
+## Konfiguration
 
-### Einrichtung
+| Einstellung | Beschreibung | Standard |
+|---|---|---|
+| IP-Adresse | IP des ETAtouch im lokalen Netzwerk | – |
+| Port | HTTP-Port des ETAtouch | `8080` |
+| Abfrage-Intervall | Wie oft Werte abgefragt werden (Sekunden) | `60` |
+| Gruppen | Auswahl der zu überwachenden Bereiche | alle aktiv |
 
-1. Adapter-Instanz öffnen → Einstellungen
-2. **IP-Adresse** des ETAtouch eingeben (z. B. `192.168.10.193`)
-3. **Port** auf `8080` belassen (Standard)
-4. **Abfrage-Intervall** wählen (Standard: 60 Sekunden)
-5. Auf **„Gruppen laden"** klicken – der Adapter fragt automatisch den Menübaum des ETAtouch ab
-6. Gewünschte **Objektgruppen** auswählen (z. B. „Kessel", „PufferFlex", „HK")
-7. Speichern & Adapter neu starten
+### Verfügbare Gruppen
+
+| Gruppe | Beschreibung |
+|---|---|
+| ☑ PufferFlex | Pufferspeicher inkl. Fühler 1–4, Ladezeiten |
+| ☑ Kessel | Pelletskessel, Temperaturen, Zähler |
+| ☑ HK | Heizkreis, Heizkurve, Zeiten |
+| ☑ Lager | Pelletsvorrat, Austragung |
+| ☑ Kamin | Fremdwärme, Ladepumpe |
+
+---
 
 ## Objektstruktur
 
 ```
-eta-touch.0
+meineta.0
 ├── info
-│   └── connection          (true/false)
-├── Kessel
-│   ├── Volllaststunden     (number, h)
-│   ├── Ein_Aus_Taste       (number)
-│   └── ...
+│   └── connection                    true/false
 ├── PufferFlex
-│   ├── Ladezustand         (number, %)
+│   ├── Eingaenge
+│   │   ├── Fuehler_1_oben            °C
+│   │   ├── Fuehler_1_oben.Zustand
+│   │   ├── Fuehler_2                 °C
+│   │   └── ...
+│   ├── Puffer
+│   │   ├── Ladezustand               %
+│   │   └── ...
 │   └── ...
-└── HK
-    ├── Betrieb             (number)
+├── Kessel
+│   ├── Volllaststunden               h
+│   ├── Entaschentaste
+│   └── ...
+├── HK
+│   ├── Heizzeiten
+│   └── ...
+├── Lager
+│   ├── Vorrat                        kg
+│   └── ...
+└── Kamin
     └── ...
 ```
 
-Jede Gruppe entspricht einem **fub** (Functional Block) im ETAtouch-Menübaum.  
-Innerhalb einer Gruppe werden **alle Blattknoten** (Endpunkte ohne Unterpunkte) als States angelegt.
+Jeder Knoten aus dem ETAtouch-Menübaum wird als Datenpunkt angelegt – inklusive aller Zwischenknoten (z.B. `Fühler 1 (oben)` mit eigenem Temperaturwert).
+
+---
 
 ## Werte verstehen
 
 | Attribut | Bedeutung |
 |---|---|
-| `scaleFactor` | Rohwert ÷ scaleFactor = angezeigter Wert |
+| `scaleFactor` | Rohwert ÷ scaleFactor = angezeigter Wert (z.B. `783 / 10 = 78.3°C`) |
 | `decPlaces` | Anzahl Dezimalstellen |
-| `unit` | Einheit (°C, %, h, …) |
-| `advTextOffset` | Bei Textvariablen: Offset, um Bool-Wert zu berechnen (rawValue - advTextOffset) |
+| `unit` | Einheit (`°C`, `%`, `h`, `kg`, …) |
+| `advTextOffset` | Bei Textvariablen: Offset für Bool-Auswertung |
 
-Beispiel: Rohwert `1803`, advTextOffset `1802` → `1803 - 1802 = 1` → „Ein"
+---
 
-## Schreibzugriff
+## API
 
-Dieser Adapter ist **read-only**. Das Schreiben von Werten ist nicht implementiert, da:
-- Die meisten Heizungsparameter sicherheitskritisch sind
-- ETAtouch die API nur für autorisierte LAN-Zugriffe öffnet
+Der Adapter nutzt die offizielle **ETAtouch RESTful Webservices API v1.2**:
 
-## API-Dokumentation
+| Endpunkt | Verwendung |
+|---|---|
+| `GET /user/menu` | Menübaum abrufen |
+| `GET /user/var/{uri}` | Einzelwert lesen |
 
-ETAtouch RESTful Webservices Version 1.2 (November 2019)
+Schreibzugriff ist **nicht implementiert** – der Adapter ist rein lesend.
 
-- `GET /user/menu` – Menübaum
-- `GET /user/var/{uri}` – Einzelwert lesen
-- `GET /user/errors` – Aktive Fehler (noch nicht implementiert)
+---
 
 ## Changelog
 
+### 1.2.0
+- Verschachtelungskorrekter XML-Parser (Fühler 1–4 korrekt zugeordnet)
+- Elternknoten (z.B. Fühler-Temperaturen) werden als eigene Datenpunkte ausgegeben
+- ETA-Logo hinzugefügt
+- `info.connection` Objekt wird korrekt angelegt
+
+### 1.1.0
+- Feste Gruppen: PufferFlex, Kessel, HK, Lager, Kamin
+- Trailing-Dot Bug in Objekt-IDs behoben
+
 ### 1.0.0
 - Erstveröffentlichung
-- Menübaum parsen und Gruppen auswählen
-- Regelmäßiges Polling der ausgewählten Gruppen
-- Admin-UI mit Gruppenauswahl
+
+---
 
 ## Lizenz
 
-MIT © ioBroker User
+MIT © [morgenstern1987](https://github.com/morgenstern1987)
