@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <title>MeinETA Adapter</title>
+    <link rel="stylesheet" type="text/css" href="../../css/adapter.css">
+    <link rel="stylesheet" type="text/css" href="../../lib/css/materialize.css">
+    <script src="../../lib/js/jquery-3.2.1.min.js"></script>
+    <script src="../../socket.io/socket.io.js"></script>
+    <script src="../../lib/js/materialize.js"></script>
+    <script src="../../lib/js/adapter-settings.js"></script>
+    <style>
+        .group-list       { max-height: 340px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 8px; margin-top: 8px; }
+        .group-item label { cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 14px; padding: 4px 4px; }
+        .status-msg       { font-size: 13px; color: #888; margin-top: 6px; min-height: 20px; }
+        .status-msg.err   { color: #c00; }
+        .status-msg.ok    { color: #2a7; }
+    </style>
+</head>
+<body>
+
+<!-- adapter-settings.js sucht nach .m-adapter-container ODER .adapter-container -->
+<div class="m adapter-container">
+
+    <div class="row">
+        <div class="col s12 m6">
+            <div class="input-field">
+                <input type="text" class="value" id="ip" placeholder="192.168.1.100">
+                <label for="ip">IP-Adresse des ETAtouch</label>
+            </div>
+        </div>
+        <div class="col s12 m3">
+            <div class="input-field">
+                <input type="number" class="value" id="port" min="1" max="65535">
+                <label for="port">Port</label>
+            </div>
+        </div>
+        <div class="col s12 m3">
+            <div class="input-field">
+                <input type="number" class="value" id="pollInterval" min="10" max="3600">
+                <label for="pollInterval">Abfrage-Intervall (Sek.)</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col s12">
+            <h6 style="font-weight:500;margin-bottom:6px;">Objektgruppen auswählen</h6>
+            <p style="font-size:13px;color:#666;margin:0 0 10px;">
+                Klicke auf "Gruppen laden" um alle verfügbaren Gruppen vom ETAtouch abzurufen,
+                dann die gewünschten Gruppen anhaken und oben speichern.
+            </p>
+            <button class="btn waves-effect waves-light" id="btnLoad" type="button">
+                Gruppen laden
+            </button>
+            <div class="status-msg" id="statusMsg"></div>
+            <div class="group-list" id="groupList" style="display:none;margin-top:10px;"></div>
+        </div>
+    </div>
+
+</div><!-- /.adapter-container -->
+
+<script>
+// ─── Pflicht-Funktionen für adapter-settings.js ──────────────────────────────
+// load() wird von adapter-settings.js aufgerufen nachdem die Instanz-Settings
+// geladen wurden. save() wird aufgerufen wenn der Nutzer auf Speichern klickt.
+
+function load(settings, onChange) {
+    // Felder befüllen
+    $('#ip').val(settings.ip || '');
+    $('#port').val(settings.port !== undefined ? settings.port : 8080);
+    $('#pollInterval').val(settings.pollInterval !== undefined ? settings.pollInterval : 60);
+    M.updateTextFields();   // Materialize-Labels nach oben schieben
+
+    // gespeicherte Gruppen merken
+    window._savedGroups = settings.selectedGroups || [];
+
+    // Änderungs-Listener → aktiviert die Speichern-Leiste
+    $('.value').on('change', onChange);
+
+    // Gruppen automatisch laden falls IP bekannt
+    if (settings.ip) {
+        doLoadGroups(onChange);
+    }
+}
+
+function save(callback) {
+    callback({
+        ip:             $('#ip').val().trim(),
+        port:           parseInt($('#port').val()) || 8080,
+        pollInterval:   parseInt($('#pollInterval').val()) || 60,
+        selectedGroups: getChecked()
+    });
+}
+
+// ─── Gruppen laden ────────────────────────────────────────────────────────────
+$('#btnLoad').on('click', function() {
+    // onChange-Referenz ist zu diesem Zeitpunkt noch nicht verfügbar,
+    // daher holen wir sie aus dem globalen Scope von adapter-settings.js
+    doLoadGroups(window._onChange);
+});
+
+function doLoadGroups(onChange) {
+    var ip   = $('#ip').val().trim();
+    var port = parseInt($('#port').val()) || 8080;
+
+    if (!ip) {
+        setStatus('Bitte zuerst eine IP-Adresse eingeben.', 'err');
+        return;
+    }
+
+    setStatus('Verbinde mit ' + ip + ':' + port + ' …', '');
+    $('#btnLoad').prop('disabled', true);
+    $('#groupList').hide();
+
+    // sendTo an die laufende Adapter-Instanz
+    socket.emit('sendTo',
+        adapter + '.' + instance,
+        'getGroups',
+        { ip: ip, port: port },
+        function(result) {
+            $('#btnLoad').prop('disabled', false);
+
+            if (!result || result.error) {
+                setStatus('Fehler: ' + (result ? result.error : 'Keine Antwort – Instanz gestartet?'), 'err');
+                return;
+            }
+            if (!result.groups || !result.groups.length) {
+                setStatus('Keine Gruppen gefunden.', 'err');
+                return;
+            }
+
+            renderGroups(result.groups, onChange);
+            setStatus('✓ ' + result.groups.length + ' Gruppen gefunden.', 'ok');
+        }
+    );
+}
+
+function renderGroups(groups, onChange) {
+    var saved = window._savedGroups || [];
+    var $list = $('#groupList').empty();
+
+    groups.forEach(function(g) {
+        var chk = saved.indexOf(g.value) !== -1 ? ' checked' : '';
+        $list.append(
+            '<div class="group-item">' +
+              '<label>' +
+                '<input type="checkbox" class="group-cb" value="' + esc(g.value) + '"' + chk + '> ' +
+                esc(g.label) +
+              '</label>' +
+            '</div>'
+        );
+    });
+
+    // Checkbox-Änderung → Speichern-Leiste aktivieren
+    $list.find('.group-cb').on('change', function() {
+        if (typeof onChange === 'function') onChange();
+        // auch window._onChange aktualisieren falls vorhanden
+        if (typeof window._onChange === 'function') window._onChange();
+    });
+
+    $list.show();
+}
+
+function getChecked() {
+    var r = [];
+    $('.group-cb:checked').each(function() { r.push($(this).val()); });
+    return r;
+}
+
+function setStatus(msg, cls) {
+    $('#statusMsg').attr('class', 'status-msg ' + (cls || '')).text(msg);
+}
+
+function esc(s) {
+    return String(s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// adapter-settings.js speichert onChange intern – wir haken uns ein
+// damit der Button sie auch nach dem ersten load() noch kennt
+$(document).ready(function() {
+    // kleiner Trick: adapter-settings.js bindet onChange als globale Var
+    // unter dem Namen "onChange" – wir spiegeln sie in _onChange
+    var _orig = window.onChange;
+    Object.defineProperty(window, 'onChange', {
+        get: function() { return _orig; },
+        set: function(fn) { _orig = fn; window._onChange = fn; }
+    });
+});
+</script>
+</body>
+</html>
